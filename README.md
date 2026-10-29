@@ -1,5 +1,7 @@
 # Event-Triggered Control — Python Demo
 
+> **研究コードについて：** 提供されたNN学習・検証・グラフ生成のPythonコードは、[research_nn/](research_nn/) に分けて保存しています。以下の `src/` はそれとは異なる教育用デモです。リポジトリは現在Privateです。
+
 > **公開準備中 / Draft.** This is an independently generated **educational demonstration**, not the applicant's original laboratory code or unpublished research results.
 
 ## 概要 / Overview
