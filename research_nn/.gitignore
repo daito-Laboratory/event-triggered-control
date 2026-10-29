@@ -1,0 +1,13 @@
+Result/
+result.xlsx
+**/params.pt
+**/params_all.pt
+**/condition.txt
+**/result.py
+**/sigmoid_k_history.csv
+**/Fig/
+**/*.svg
+__pycache__/
+*.py[cod]
+.venv/
+venv/
