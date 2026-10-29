@@ -1,101 +1,120 @@
-# Event-Triggered Control — Python Demo
+# Neural Network-Based Event-Triggered Control
 
-> **研究コードについて：** 提供されたNN学習・検証・グラフ生成のPythonコードは、[research_nn/](research_nn/) に分けて保存しています。以下の `src/` はそれとは異なる教育用デモです。リポジトリは現在Privateです。
+Python / PyTorch を用いた、ニューラルネットワークによるイベントトリガ制御系の実装です。状態送信の判断と状態フィードバックゲインを学習し、制御性能と通信回数を評価します。
 
-> **公開準備中 / Draft.** This is an independently generated **educational demonstration**, not the applicant's original laboratory code or unpublished research results.
+## Overview
 
-## 概要 / Overview
-
-離散時間の一次元線形システムについて、毎ステップ状態を送信する方式と、誤差が閾値を超えた場合だけ送信する方式を比較する小規模なPythonデモです。大学院の研究テーマに関連する基礎概念の紹介を目的としています。
-
-**注意:** 本デモの閾値判定は、実際の研究で使用するニューラルネットワークやシンボリック回帰によるトリガ判断を再現していません。研究室の未公開データや既存コードを含みません。
-
-## 制御モデルと数式 / Mathematical Model
-
-### 1. 制御対象の状態方程式
-
-以下の**離散時間・一次元の線形システム**を考えます。
+離散時間の線形システム
 
 $$
-x_{k+1} = a x_k + b u_k
+x_{k+1}=Ax_k+Bu_k+w_k, \qquad u_k=K\hat{x}_k
 $$
 
-| 記号 | 意味 | このデモの値 |
-|---|---|---:|
-| $x_k$ | 時刻 $k$ の制御対象の状態 | 初期値 $x_0=4.0$ |
-| $u_k$ | 時刻 $k$ の制御入力 | 下記のフィードバック則で計算 |
-| $a$ | 状態の係数 | $1.05$ |
-| $b$ | 入力の係数 | $1.0$ |
-| $K$ | フィードバックゲイン | $-0.65$ |
+を考えます。ここで、$x_k$ は制御対象の状態、$u_k$ は制御入力、$\hat{x}_k$ は最後に受信した状態、$w_k$ は外乱です。
 
-### 2. 通信があるとき・ないときの制御
-
-制御器は、**最後に受信した状態**を $\hat{x}_k$ として保持します。
+ニューラルネットワークは現在の状態と保持状態との差分
 
 $$
-u_k = K\hat{x}_k
+e_k=\hat{x}_{k-1}-x_k
 $$
 
-- **送信あり**：$\hat{x}_k=x_k$ に更新してから、$u_k$ を計算します。
-- **送信なし**：$\hat{x}_k=\hat{x}_{k-1}$ とし、前回受信した状態をそのまま使います。
-
-### 3. イベントトリガ条件（いつ送信するか）
-
-現在の状態と、最後に受信した状態との差を
+から構成した入力 $[x_k^\top,e_k^\top]^\top$ に基づいて送信を判断します。トリガ関数を $f_\theta$ とすると、評価時の送信判断は
 
 $$
-e_k = x_k-\hat{x}_{k-1}
+\delta_k=\begin{cases}
+1 & (f_\theta(x_k,e_k)>0)\\
+0 & (\text{otherwise})
+\end{cases}
 $$
 
-と定義します。初回 $k=0$ は必ず送信し、$k\geq1$ では次の条件で送信します。
+です（初期時刻は必ず送信）。モデルには隠れ層を持つ全結合ニューラルネットワークを用いています。
+
+学習では、状態偏差、制御入力、通信回数、および終端状態を考慮した評価関数を最小化します。
 
 $$
-\boxed{\;|e_k|\ \geq\ \sigma |x_k|+\varepsilon\;}
+J=\sum_{k=0}^{T-1}
+\left(x_k^\top Qx_k+u_k^\top Ru_k+\lambda\delta_k\right)+x_T^\top Q_f x_T
 $$
 
-つまり、**状態のずれが許容範囲以上になったときだけ送信する**方式です。
+## Features
 
-| 記号 | 意味 | このデモの値 |
-|---|---|---:|
-| $e_k$ | 更新前の状態推定誤差 | $x_k-\hat{x}_{k-1}$ |
-| $\sigma$ | 状態の大きさに比例する閾値の係数 | $0.2$ |
-| $\varepsilon$ | 絶対閾値 | $0.02$ |
+- PyTorchによるNNトリガとフィードバックゲイン $K$ の同時最適化
+- Sigmoidによる連続緩和、およびストレートスルー推定の切替
+- 学習・最良エポック選択・最終評価で独立した乱数シードを使用
+- 学習履歴、評価コスト、状態軌道、通信タイミングの可視化
+- 学習終了時点（Last）と選択されたモデル（Best）の比較
 
-**毎回送信する方式（Periodic）**では、全時刻で $\hat{x}_k=x_k$ とします。これを**イベントトリガ方式（Event-triggered）**と比較します。
+## Repository structure
 
-> **研究モデルとの違い：** ここでのトリガは単純な誤差閾値です。現在取り組んでいるニューラルネットワークやシンボリック回帰によるトリガ判断の式・学習結果を再現したものではありません。研究内容の公開にあたっては別途確認が必要です。
-
-## 実装 / Files
-
-- `src/simulate.py` — 2方式のシミュレーション・結果CSVの生成
-- `src/plot_results.py` — 状態と送信タイミングの可視化
-- `tests/test_simulate.py` — 4つの簡単な自動テスト
-- `requirements.txt` — グラフ作成に必要なパッケージ
-
-## 実行 / Run
-
-Python 3.10以上で動作する構成です。
-
-```bash
-python src/simulate.py
-python -m unittest discover -s tests -v
-python -m pip install -r requirements.txt
-python src/plot_results.py
+```text
+research_nn/
+└── DU_ETC/
+    ├── My_module/
+    │   ├── my_function_ET.py    # NN・学習・評価・可視化の実装
+    │   └── plant_base.py
+    └── ETC/
+        └── Liner_system/
+            ├── plant.py         # 制御対象・外乱
+            └── NN/
+                ├── DETC.py      # 学習・評価の実行
+                ├── parameter.py # 実験設定
+                ├── simulation.py # 学習済みモデルの再評価
+                ├── beep.py
+                ├── README.md    # 実装と実験の詳細
+                └── Result/      # 実験条件ごとの実行結果
 ```
 
-`src/simulate.py` はPython標準ライブラリのみで動作します。CSV・グラフは `results/` に生成されます。
+[実装と実験条件の詳細](research_nn/DU_ETC/ETC/Liner_system/NN/README.md) · [学習・評価コード](research_nn/DU_ETC/ETC/Liner_system/NN/DETC.py) · [学習モジュール](research_nn/DU_ETC/My_module/my_function_ET.py)
 
-## 動作例 / Sample output
+## Setup and usage
 
-デフォルト設定 (`steps=30`) を使うと、次の結果になります。
+Python、PyTorch、Matplotlib、openpyxl を利用します。以下はWindows環境での実行例です。
 
-| Method | State transmissions |
-|---|---:|
-| Periodic | 30 / 30 |
-| Event-triggered | 13 / 30 |
+```powershell
+python -m pip install -r requirements.txt
+cd research_nn\DU_ETC\ETC\Liner_system\NN
+python DETC.py
+```
 
-送信回数は設定したゲインや閾値に依存します。このサンプルは一般的な安定性を保証するものではありません。
+学習後のモデルを再評価する場合は、同じディレクトリで `python simulation.py` を実行します。引数に実験結果ディレクトリを与えることもできます。初期条件や学習率、ネットワーク構造などは `parameter.py` で設定します。
 
-## 研究成果・著作について
+## Experiment results
 
-この初期デモは生成AIの補助で公開準備用に作成したひな形です。**応募者本人の開発実績や研究実装であるとは主張しません。** 本人が検証・改良した範囲を明確にし、研究成果を追加する場合は必要な公開許可を得てから掲載します。
+下図は2026年10月27日の実験例です。
+
+| Parameter | Value |
+|---|---|
+| System | 2 states, 1 control input |
+| Horizon | 30 steps |
+| Epochs | 100 |
+| Optimizer / Learning rate | AdamW / 0.003 |
+| Network | 5 hidden layers × 8 units |
+| Initial state | $x_0 \sim U([-5,5]^2)$ |
+| Disturbance | $w_k \sim U([-0.2,0.2]^2)$ |
+| Communication penalty | $\lambda=50$ |
+| Training / validation / test seeds | 1 / 1001 / 2001 |
+| Best feedback gain | $K=[0.3263,\;1.6885]$ |
+
+### Evaluation cost
+
+エポックごとの選択用評価コスト。破線は選択されたエポック（99、0始まり）です。
+
+![Evaluation cost across epochs](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/eval_cost_full_linear.svg)
+
+### Final epochs
+
+学習終盤の評価コストを拡大したものです。
+
+![Evaluation cost in final epochs](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/eval_cost_tail_linear.svg)
+
+### Example trajectory
+
+学習終了時のモデル（Last）による状態軌道、制御入力、および通信フラグの一例です。
+
+![State, control and transmission example](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/Last/Fig/0.svg)
+
+[この実験の全ファイル](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/) · [Lastの軌道図（0〜25）](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/Last/Fig/) · [学習済みパラメータ](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/result.py)
+
+## Notes
+
+`My_module` と `NN` は相対インポートで参照されるため、ディレクトリ構造を保って実行してください。プロットと学習済みパラメータは、設定条件と実行日時ごとに `Result/` 以下に保存されます。
