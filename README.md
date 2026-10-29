@@ -2,9 +2,16 @@
 
 Python / PyTorch を用いた、ニューラルネットワークによるイベントトリガ制御系の実装です。状態送信の判断と状態フィードバックゲインを学習し、制御性能と通信回数を評価します。
 
+## Projects
+
+- **[2D — NN-based event-triggered control](2D/)**：2次元系におけるNN学習、制御性能・通信回数の評価、学習曲線・状態軌道の可視化
+- **[1D — NN & symbolic regression](1D/)**：一次元系におけるNNトリガの解釈・関数同定（コード・実験結果は追加予定）
+
+以下では現在収録している**2Dモデル**の実装と実験結果を説明します。
+
 ## Overview
 
-離散時間の線形システム
+2次元の離散時間線形システム
 
 $$
 x_{k+1}=Ax_k+Bu_k+w_k, \qquad u_k=K\hat{x}_k
@@ -47,38 +54,43 @@ $$
 ## Repository structure
 
 ```text
-research_nn/
-└── DU_ETC/
-    ├── My_module/
-    │   ├── my_function_ET.py    # NN・学習・評価・可視化の実装
-    │   └── plant_base.py
-    └── ETC/
-        └── Liner_system/
-            ├── plant.py         # 制御対象・外乱
-            └── NN/
-                ├── DETC.py      # 学習・評価の実行
-                ├── parameter.py # 実験設定
-                ├── simulation.py # 学習済みモデルの再評価
-                ├── beep.py
-                ├── README.md    # 実装と実験の詳細
-                └── Result/      # 実験条件ごとの実行結果
+event-triggered-control/
+├── 1D/                     # 一次元制御系・NNとシンボリック回帰（追加予定）
+│   └── README.md
+├── 2D/                     # 二次元制御系・NN学習と評価
+│   ├── README.md
+│   └── DU_ETC/
+│       ├── My_module/
+│       │   ├── my_function_ET.py
+│       │   └── plant_base.py
+│       └── ETC/
+│           └── Liner_system/
+│               ├── plant.py
+│               └── NN/
+│                   ├── DETC.py
+│                   ├── parameter.py
+│                   ├── simulation.py
+│                   ├── README.md
+│                   └── Result/
+├── requirements.txt
+└── README.md
 ```
 
-[実装と実験条件の詳細](research_nn/DU_ETC/ETC/Liner_system/NN/README.md) · [学習・評価コード](research_nn/DU_ETC/ETC/Liner_system/NN/DETC.py) · [学習モジュール](research_nn/DU_ETC/My_module/my_function_ET.py)
+[実装と実験条件の詳細](2D/DU_ETC/ETC/Liner_system/NN/README.md) · [学習・評価コード](2D/DU_ETC/ETC/Liner_system/NN/DETC.py) · [学習モジュール](2D/DU_ETC/My_module/my_function_ET.py)
 
-## Setup and usage
+## Running the 2D project
 
 Python、PyTorch、Matplotlib、openpyxl を利用します。以下はWindows環境での実行例です。
 
 ```powershell
 python -m pip install -r requirements.txt
-cd research_nn\DU_ETC\ETC\Liner_system\NN
+cd 2D\DU_ETC\ETC\Liner_system\NN
 python DETC.py
 ```
 
 学習後のモデルを再評価する場合は、同じディレクトリで `python simulation.py` を実行します。引数に実験結果ディレクトリを与えることもできます。初期条件や学習率、ネットワーク構造などは `parameter.py` で設定します。
 
-## Experiment results
+## 2D experiment results
 
 下図は2026年10月27日の実験例です。
 
@@ -99,21 +111,21 @@ python DETC.py
 
 エポックごとの選択用評価コスト。破線は選択されたエポック（99、0始まり）です。
 
-![Evaluation cost across epochs](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/eval_cost_full_linear.svg)
+![Evaluation cost across epochs](2D/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/eval_cost_full_linear.svg)
 
 ### Final epochs
 
 学習終盤の評価コストを拡大したものです。
 
-![Evaluation cost in final epochs](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/eval_cost_tail_linear.svg)
+![Evaluation cost in final epochs](2D/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/eval_cost_tail_linear.svg)
 
 ### Example trajectory
 
 学習終了時のモデル（Last）による状態軌道、制御入力、および通信フラグの一例です。
 
-![State, control and transmission example](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/Last/Fig/0.svg)
+![State, control and transmission example](2D/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/Last/Fig/0.svg)
 
-[この実験の全ファイル](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/) · [Lastの軌道図（0〜25）](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/Last/Fig/) · [学習済みパラメータ](research_nn/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/result.py)
+[この実験の全ファイル](2D/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/) · [Lastの軌道図（0〜25）](2D/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/Last/Fig/) · [学習済みパラメータ](2D/DU_ETC/ETC/Liner_system/NN/Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/result.py)
 
 ## Notes
 
