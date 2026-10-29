@@ -4,7 +4,7 @@
 
 ## フォルダ構成
 
-\`\`\`text
+```text
 event-triggered-control/
 ├── README.md                     # リポジトリ全体の説明（別の教育用デモあり）
 ├── src/                          # 独立した教育用デモ（研究原本とは別）
@@ -20,11 +20,11 @@ event-triggered-control/
         ├── __init__.py
         ├── my_function_ET.py     # NN、コスト計算、学習、評価、作図処理
         └── plant_base.py         # 制御対象の基底クラス
-\`\`\`
+```
 
-**階層上の重要点:** \`plant.py\` の \`from My_module.plant_base import PlantBase\` と、\`DETC.py\`・\`simulation.py\` の \`from My_module import my_function_ET\` が解決するように、\`My_module/\` は \`research_nn/\` **直下**に置いています。プロジェクトのルートではなく \`research_nn/\` を実行起点にしてください。
+**階層上の重要点:** `plant.py` の `from My_module.plant_base import PlantBase` と、`DETC.py`・`simulation.py` の `from My_module import my_function_ET` が解決するように、`My_module/` は `research_nn/` **直下**に置いています。プロジェクトのルートではなく `research_nn/` を実行起点にしてください。
 
-元のファイル名 \`parameter(4).py\` と \`simulation(1).py\` は、既存の \`import parameter\` や実行手順に合わせて \`parameter.py\`、\`simulation.py\` として登録しました。
+元のファイル名 `parameter(4).py` と `simulation(1).py` は、既存の `import parameter` や実行手順に合わせて `parameter.py`、`simulation.py` として登録しました。
 
 ## 制御モデル
 
@@ -51,28 +51,28 @@ J=\sum_{k=0}^{T-1}
 +x_T^\top Q_fx_T
 $$
 
-※ \`Evolute_NN()\` が返す評価用コストは上式の全項ではなく、QRステージコストです。数値を混同しないでください。
+※ `Evolute_NN()` が返す評価用コストは上式の全項ではなく、QRステージコストです。数値を混同しないでください。
 
 ## 実行の流れ（Windowsでの元コード想定）
 
-1. Python環境に \`requirements.txt\` の依存関係を導入する。
-2. ターミナルのカレントディレクトリを **\`research_nn/\`** にする。
-3. \`parameter.py\`、\`plant.py\` で条件を確認する。
-4. \`python DETC.py\` で学習・最良パラメータの検証・グラフ出力を実行する。
+1. Python環境に `requirements.txt` の依存関係を導入する。
+2. ターミナルのカレントディレクトリを **`research_nn/`** にする。
+3. `parameter.py`、`plant.py` で条件を確認する。
+4. `python DETC.py` で学習・最良パラメータの検証・グラフ出力を実行する。
 
-\`\`\`powershell
+```powershell
 cd research_nn
 python -m pip install -r requirements.txt
 python DETC.py
-\`\`\`
+```
 
-\`DETC.py\` はWindows専用の \`winsound\` を利用し、出力ディレクトリの構築にもWindows形式の区切り文字を含んでいます。ほかのOSでは調整が必要です。
+`DETC.py` はWindows専用の `winsound` を利用し、出力ディレクトリの構築にもWindows形式の区切り文字を含んでいます。ほかのOSでは調整が必要です。
 
 ### 学習時の出力
 
-\`parameter.py\` の \`Folderpath\` 以下に、さらに **Sigmoidの設定を表すフォルダと実行日時フォルダ**が生成されます。
+`parameter.py` の `Folderpath` 以下に、さらに **Sigmoidの設定を表すフォルダと実行日時フォルダ**が生成されます。
 
-\`\`\`text
+```text
 <Folderpath>/
 └── <sig_tag>/
     └── <run_id>/
@@ -86,19 +86,19 @@ python DETC.py
         ├── params.pt
         ├── params_all.pt
         └── Fig/                           # 状態、入力、通信判断の軌道図
-\`\`\`
+```
 
 このほかにも学習曲線の対数表示、末尾区間の拡大図など複数のSVGが生成されます。上記の実行結果は**このリポジトリには未掲載**です。
 
-### 別スクリプト \`simulation.py\` の注意点
+### 別スクリプト `simulation.py` の注意点
 
-そのままの \`simulation.py\` は \`parameter.Folderpath/result.py\` を読み込みますが、実際の \`DETC.py\` は \`<Folderpath>/<sig_tag>/<run_id>/result.py\` に保存します。**そのため、保存先を合わせないと学習結果を読み込めません。**
+そのままの `simulation.py` は `parameter.Folderpath/result.py` を読み込みますが、実際の `DETC.py` は `<Folderpath>/<sig_tag>/<run_id>/result.py` に保存します。**そのため、保存先を合わせないと学習結果を読み込めません。**
 
-今回のアップロードでは元コードを変更していません。別スクリプトを動作させるには、対象となる実験の \`result.py\` のパスを指定する修正が必要です。
+今回のアップロードでは元コードを変更していません。別スクリプトを動作させるには、対象となる実験の `result.py` のパスを指定する修正が必要です。
 
 ## 現状・公開時の注意
 
 - 添付されたコードは保存しましたが、**学習ジョブ全体は実行していません**。実行結果や性能を検証済みとは主張しません。
 - 元コードには実験固有の設定・出力先、研究室と関連する処理があるため、**外部公開前に指導教員や共同研究者との権利・公開範囲の確認が必要**です。
-- 学習済み重み・実験ログ・生成ファイルを意図せず公開しないよう、\`.gitignore\` を追加しています。
-- リポジトリ直下の \`src/\` はAI補助で作った独立デモです。この \`research_nn/\` とは区別してください。
+- 学習済み重み・実験ログ・生成ファイルを意図せず公開しないよう、`.gitignore` を追加しています。
+- リポジトリ直下の `src/` はAI補助で作った独立デモです。この `research_nn/` とは区別してください。
