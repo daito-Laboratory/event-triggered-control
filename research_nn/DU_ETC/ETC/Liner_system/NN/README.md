@@ -1,106 +1,79 @@
-# Neural Network-Based Event-Triggered Control
+# NN training and evaluation
 
-## 目的
+本ディレクトリにはニューラルネットワークを用いたイベントトリガ制御の学習・評価スクリプトを配置しています。
 
-ニューラルネットワーク（NN）で状態送信のタイミングを決定するイベントトリガ制御の学習・評価コードです。このフォルダは元の研究実装であり、リポジトリ直下の教育用デモとは異なります。
+## Files
 
-## 制御系と通信判断
+| File | Description |
+|---|---|
+| [DETC.py](DETC.py) | NNの学習、Best/Lastの最終評価、結果の保存 |
+| [parameter.py](parameter.py) | 実験条件・ハイパーパラメータ・乱数シード |
+| [simulation.py](simulation.py) | 保存済みNNの再評価 |
+| [../plant.py](../plant.py) | 2次元線形制御対象および外乱生成 |
+| [../../../My_module/my_function_ET.py](../../../My_module/my_function_ET.py) | NNの定義、コスト計算、学習、描画処理 |
 
-2次元の離散時間系を対象とします。
+`My_module` は `DU_ETC/` 直下にあり、`plant.py` はこのディレクトリの1階層上です。Pythonファイル単位で移動するとインポートが解決できなくなるため、この構造のまま使用してください。
+
+## Model
 
 $$
-x_{k+1}=Ax_k+Bu_k+w_k,\qquad u_k=K\hat{x}_k
+x_{k+1}=Ax_k+Bu_k+w_k,\quad
+u_k=K\hat{x}_k
 $$
 
 $$
-A=\begin{bmatrix}1&0.8\\0&1.1\end{bmatrix},\quad
-B=\begin{bmatrix}1\\-1\end{bmatrix}
+A=\begin{bmatrix}1&0.8\\0&1.1\end{bmatrix},
+\quad B=\begin{bmatrix}1\\-1\end{bmatrix}
 $$
 
-- $x_k$：現在の状態（2次元）
-- $\hat{x}_k$：制御器が最後に受信し保持している状態
-- $u_k$：制御入力
-- $w_k$：外乱
-- $K$：NNトリガと同時に学習するフィードバックゲイン
-
-この版のNN入力は $[x_k^\top,e_k^\top]^\top$ で、$e_k=\hat{x}-x_k$ と定義します。NNの出力が通信判断に使われ、学習時のSoft/Hard処理は `parameter.py` の設定で切り替えます。
-
-評価関数は状態・入力・通信・終端コストを含みます。
+通信トリガ用NNの入力は `parameter.py` で設定します。今回の実験では `x_e`（$[x_k;e_k]$、$e_k=\hat{x}_{k-1}-x_k$）を使用します。
 
 $$
 J=\sum_{k=0}^{T-1}
 \left(x_k^\top Qx_k+u_k^\top Ru_k+\lambda\delta_k\right)
-+x_T^\top Q_fx_T
++x_T^\top Q_f x_T
 $$
 
-ここで、$\delta_k$ は送信判断、$\lambda$ は通信のコスト係数です。今回のソースでは最終評価時の通信回数に初回送信を含みます。
+`DETC.py` は複数のtrain seedに対応し、検証用と最終評価用の乱数系列を分離します。結果は実験条件と実行日時を含むディレクトリへ保存されます。
 
-## 実行するファイルと配置
+## Reproducing the run
 
-```text
-DU_ETC/
-├── My_module/
-│   ├── my_function_ET.py      # 学習・評価・グラフ化
-│   └── plant_base.py
-└── ETC/
-    └── Liner_system/
-        ├── plant.py           # NN/parameter.py を参照
-        └── NN/
-            ├── parameter.py   # ハイパーパラメータ
-            ├── DETC.py        # 学習・評価・結果出力
-            ├── simulation.py  # 学習済みNNの再評価
-            └── Result/        # 実験別の出力
-```
-
-**階層を変えないこと**：`DETC.py` は3階層上の `My_module/` を、`plant.py` は同じ `Liner_system/` の `NN/parameter.py` を参照します。
-
-### 実行例（Windows）
+Windows PowerShell（リポジトリのルートで依存関係を導入した後）：
 
 ```powershell
 cd research_nn\DU_ETC\ETC\Liner_system\NN
 python DETC.py
+python simulation.py
 ```
 
-学習したNNの別途評価は `python simulation.py "結果フォルダのフルパス"` として実行できます。依存ライブラリは `torch`・`matplotlib`・`openpyxl` です。
+別の学習seedを指定する場合：
 
-## 今回整理する実験
+```powershell
+python DETC.py --train_seed 2
+```
 
-| 項目 | 設定 |
+## Recorded run: 2026-10-27
+
+| Setting | Value |
 |---|---|
-| エポック数 | 100 |
-| 学習率 | 0.003 |
-| 通信重み $\lambda$ | 50 |
-| NN | 隠れ層5層、各8ノード |
-| NN入力 | $[x;e]$ |
-| 初期値範囲 | 各成分 $[-5,5]$ |
-| 外乱 | 各成分 一様分布 $[-0.2,0.2]$ |
-| データ数 / バッチ | 64 / 8 |
-| Sigmoid傾き | 初期1、各エポック1.01倍 |
-| 学習 / 検証 / テストseed | 1 / 1001 / 2001 |
+| Horizon / Epochs | 30 / 100 |
+| Initial states | $[-5,5]^2$ |
+| Disturbance | $[-0.2,0.2]^2$ |
+| $\lambda$ | 50 |
+| Learning rate | 0.003 |
+| NN | 5 hidden layers, 8 nodes each |
+| NN input | `x_e` |
+| Sigmoid parameter | $k_0=1$; ×1.01/epoch |
+| Training/validation/test seed | 1 / 1001 / 2001 |
+| Best gain | $K=[0.326254,1.688476]$ |
 
-## 結果フォルダの階層
+**結果の保存先：** [20261027_193214_072517_seed1/](Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/)
 
-以下はユーザーが指定した**既存の実験フォルダ**です。GitHubではWindowsの絶対パスではなく、`NN/` からの相対パスで保存します。
+- [評価コスト（全期間・線形表示）](Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/eval_cost_full_linear.svg)
+- [評価コスト（全期間・対数表示）](Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/eval_cost_full_log.svg)
+- [評価コスト（終盤）](Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/eval_cost_tail_linear.svg)
+- [損失と学習率](Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/loss_history.svg)
+- [Lastモデルの状態軌道・通信タイミング（0〜25）](Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/Last/Fig/)
+- [学習済みパラメータ](Result/e100/lam50/x0_-5_5/dist_-0.2_0.2/DataSize64_Batch8/lr0.003/layer_5node_8/AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/20261027_193214_072517_seed1/result.py)
 
-```text
-Result/
-└── e100/lam50/x0_-5_5/dist_-0.2_0.2/
-    └── DataSize64_Batch8/lr0.003/layer_5node_8/
-        └── AdamW/stagecost_fixed/T30_sig_multiply_s1_r1.01/
-            └── 20261027_193214_072517_seed1/
-                ├── Best/
-                │   └── Fig/
-                │       └── 0.svg ...       # Bestの状態・通信軌道
-                ├── Last/
-                │   └── Fig/
-                │       └── 0.svg ...       # Lastの状態・通信軌道
-                ├── result.py               # 学習済みNNパラメータ
-                ├── condition.txt           # 実験条件・数値
-                └── *.svg                   # 学習曲線・評価曲線など
-```
-
-### READMEに掲載する結果
-
-**実験結果は、添付ファイルと実験条件の対応を確認してから掲載します。** READMEに表示するのは代表的な2〜3枚程度のグラフと主要数値に限定し、残りの図は正しい `Result/` 以下に整理して保存します。
-
-> **注意：** 今回の学習一式をこのGitHub環境で再実行したわけではありません。未発表成果・研究コードをPublicに変更する前に、公開許可を確認してください。
+実験結果の代表図は[リポジトリのトップページ](../../../../../README.md)に掲載しています。
